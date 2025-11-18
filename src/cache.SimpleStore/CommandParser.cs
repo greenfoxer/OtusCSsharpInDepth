@@ -15,11 +15,21 @@ namespace cache.SimpleStoreSystem
             ReadOnlySpan<char> window = payload;
             var commandInfo = new CommandInfo<char>();
             // find command 
-            EnrichCommand(ref commandInfo, ref window, delimeter);
+            if (!TryEnrichCommand(ref commandInfo, ref window, delimeter))
+                return commandInfo;
+            
             // find key
-            EnrichId(ref commandInfo, ref window, delimeter);
+            if(!TryEnrichId(ref commandInfo, ref window, delimeter))
+            {
+                commandInfo.Clear();
+                return commandInfo;
+            }
+
            // find value till end
-            EnrichValue(ref commandInfo, ref window, delimeter);
+            TryEnrichValue(ref commandInfo, ref window, delimeter);
+            
+            if (!commandInfo.IsValid() || window.Length != 0)
+                commandInfo.Clear();
 
             return commandInfo;
         }
@@ -27,7 +37,7 @@ namespace cache.SimpleStoreSystem
         private static ReadOnlyMemory<char> AddCommand = "ADD".AsMemory();
         private static ReadOnlyMemory<char> GetCommand = "GET".AsMemory();
         private static ReadOnlyMemory<char> StaCommand = "STA".AsMemory();
-        private static void EnrichCommand(ref CommandInfo<char> commandInfo, ref ReadOnlySpan<char> payload, char delimeter)
+        private static bool TryEnrichCommand(ref CommandInfo<char> commandInfo, ref ReadOnlySpan<char> payload, char delimeter)
         {
             var rawParsed = ParseInternal(payload, delimeter);
             var position = payload.IndexOf(rawParsed) + rawParsed.Length;
@@ -52,15 +62,26 @@ namespace cache.SimpleStoreSystem
             if (commandInfo.CommandType != CommandTypes.Unknown)
             {
                 commandInfo.Command = rawParsed;
+                return true;
             }
+            return false;
         }
-        private static void EnrichId(ref CommandInfo<char> commandInfo, ref ReadOnlySpan<char> payload, char delimeter)
+        private static CommandTypes[] _commandsWidthId = { CommandTypes.Add, CommandTypes.Get, CommandTypes.Delete };
+        private static bool TryEnrichId(ref CommandInfo<char> commandInfo, ref ReadOnlySpan<char> payload, char delimeter)
         {
-            commandInfo.Key = ParseInternal(payload, delimeter);
-            var position = payload.IndexOf(commandInfo.Key) + commandInfo.Key.Length;
+            var rawParsed = ParseInternal(payload, delimeter);
+            var position = payload.IndexOf(rawParsed) + rawParsed.Length;
             payload = payload.Slice(position);
+
+            // уточнение по проверке ID. оказывается, идентификатор обязан содержать :
+            if (rawParsed.IndexOf(':') != -1 && _commandsWidthId.Contains(commandInfo.CommandType))
+            {
+                commandInfo.Key = rawParsed;
+                return true;
+            }
+            return false;
         }
-        private static void EnrichValue(ref CommandInfo<char> commandInfo, ref ReadOnlySpan<char> payload, char delimeter)
+        private static bool TryEnrichValue(ref CommandInfo<char> commandInfo, ref ReadOnlySpan<char> payload, char delimeter)
         {
             // find datalength if nesse
             //var rawDataLength = ParseInternal(payload, delimeter);
@@ -73,6 +94,8 @@ namespace cache.SimpleStoreSystem
             commandInfo.Value = ParseInternal(payload, delimeter);
             var position = payload.IndexOf(commandInfo.Value) + commandInfo.Value.Length;
             payload = payload.Slice(position);
+
+            return true;
         }
 
         private static ReadOnlySpan<char> ParseInternal(ReadOnlySpan<char> source, char delimeter, int? dataLength = null)

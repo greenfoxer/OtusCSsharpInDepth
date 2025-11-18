@@ -17,15 +17,24 @@ namespace cache.SimpleStoreSystem
 
         public void Set(string key, byte[] value)
         {
-            _cache[key] = value;
+            if (!string.IsNullOrEmpty(key))
+            {
+                _cache[key] = value;
+            }
         }
-        public byte[] Get(string key) 
+        public byte[]? Get(string key) 
         {
-            return _cache[key];
+            if(_cache.TryGetValue(key, out var value))
+                return value;
+
+            return null;
         }
-        public void Delete(string key) 
+        public void Delete(string key)
         {
-            _cache.Remove(key);
+            if (!string.IsNullOrEmpty(key))
+            {
+                _cache.Remove(key);
+            }
         }
     }
 }

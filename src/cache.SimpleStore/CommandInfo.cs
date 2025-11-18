@@ -20,16 +20,23 @@
             switch (CommandType)
             {
                 case CommandTypes.Add:
-                    return Key != Span<T>.Empty && Value != Span<T>.Empty;
+                    return Command != Span<T>.Empty && Key != Span<T>.Empty && Value != Span<T>.Empty;
                 case CommandTypes.Get:
-                    return Key != Span<T>.Empty && Value == Span<T>.Empty;
+                    return Command != Span<T>.Empty && Key != Span<T>.Empty && Value == Span<T>.Empty;
                 case CommandTypes.Delete:
-                    return Key != Span<T>.Empty && Value == Span<T>.Empty;
+                    return Command != Span<T>.Empty && Key != Span<T>.Empty && Value == Span<T>.Empty;
                 case CommandTypes.Statistics:
-                    return Key == Span<T>.Empty && Value == Span<T>.Empty;
+                    return Command != Span<T>.Empty && Key == Span<T>.Empty && Value == Span<T>.Empty;
                 default:
                     return false;
             }
+        }
+
+        internal void Clear()
+        {
+            Command = ReadOnlySpan<T>.Empty;
+            Key = ReadOnlySpan<T>.Empty;
+            Value = ReadOnlySpan<T>.Empty;
         }
     }
 }
