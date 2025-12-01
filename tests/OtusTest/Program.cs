@@ -31,20 +31,11 @@ namespace OtusTest
             while(true) 
                 Thread.Sleep(1000);
         }
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
-            //var t1 = CommandParser.Parse("set 1234 12 abcdnhfyrtio".AsSpan());
-
-            //var t2 = CommandParser.Parse("set 1234 5 abcdnhfyrtio".AsSpan());
-
-            //Do();
-
-
-            var t3 = CommandParser.Parse("del  1234".AsSpan(), ' ');
-
-            var t4 = CommandParser.Parse("get 1234 asdfasdfsd".AsSpan(), ' ');
-
-
+            var cts = new CancellationTokenSource();
+            var tcpServer = new TcpServer1("127.0.0.1", 55555, cts);
+            await tcpServer.StartAsync();
 
         }
         internal struct Test
