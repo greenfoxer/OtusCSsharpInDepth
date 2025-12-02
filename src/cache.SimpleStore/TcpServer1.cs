@@ -4,16 +4,18 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 
 namespace cache.SimpleStoreSystem
 {
-    public class TcpServer1
+    public class TcpServer1 : IDisposable
     {
         private CancellationTokenSource _cts;
         private Socket _socket;
         private readonly ObjectPool<Queue<(byte[], int)>> _queuePool;
         private readonly SimpleStore _cache;
         private readonly IPEndPoint _endpoint;
+        private readonly SemaphoreSlim _socketAcceptionSemapphore;
         public TcpServer1(string address, int port, CancellationTokenSource cts)
         {
             _cts = cts;
@@ -23,6 +25,8 @@ namespace cache.SimpleStoreSystem
             _queuePool = provider.Create(policy);
             _cache = new SimpleStore();
             _endpoint = new IPEndPoint(IPAddress.Parse(address), port);
+
+            _socketAcceptionSemapphore = new SemaphoreSlim(1, 1);
         }
 
         public async Task StartAsync()
@@ -37,8 +41,17 @@ namespace cache.SimpleStoreSystem
             {
                 while (!_cts.IsCancellationRequested)
                 {
-                    var client = await _socket.AcceptAsync();
-                    _ = ProcessClientAsync(client);
+                    // исключаем состояние гонки за клиентский сокет
+                    await _socketAcceptionSemapphore.WaitAsync();
+                    try
+                    {
+                        var client = await _socket.AcceptAsync();
+                        _ = ProcessClientAsync(client);
+                    }
+                    finally
+                    {
+                        _socketAcceptionSemapphore.Release();
+                    }
                 }
             }
             catch (Exception ex)
@@ -193,5 +206,30 @@ namespace cache.SimpleStoreSystem
         {
             _cts.Cancel();
         }
+        #region IDisposable
+        private bool _disposed = false;
+        ~TcpServer1()
+        {
+            Dispose(false);
+        }
+        private void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    _cts.Cancel();
+                    _socket.Shutdown(SocketShutdown.Both);
+                    _cache.Dispose();
+                }
+                _disposed = true;
+            }
+        }
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        #endregion
     }
 }
