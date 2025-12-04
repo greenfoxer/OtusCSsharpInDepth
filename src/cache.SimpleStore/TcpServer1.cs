@@ -177,7 +177,14 @@ namespace cache.SimpleStoreSystem
                     {
                         var key = command.Key.ToString();
                         var value = _cache.Get(key);
-                        response = value;
+                        if(value != null)
+                        {
+                            response = value;
+                        }
+                        else
+                        {
+                            response = GetReponse($"KEY {key} NOT FOUND!");
+                        }
                         break;
                     }
                 case CommandTypes.Delete:
