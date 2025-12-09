@@ -31,7 +31,6 @@
                     return false;
             }
         }
-
         internal void Clear()
         {
             Command = ReadOnlySpan<T>.Empty;

@@ -1,9 +1,12 @@
 ﻿using Microsoft.Extensions.ObjectPool;
 using System.Buffers;
 using System.Net;
+using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 
 namespace cache.SimpleStoreSystem
@@ -11,7 +14,7 @@ namespace cache.SimpleStoreSystem
     public class TcpServer1 : IDisposable
     {
         private CancellationTokenSource _cts;
-        private Socket _socket;
+        private Socket? _socket;
         private readonly ObjectPool<Queue<(byte[], int)>> _queuePool;
         private readonly SimpleStore _cache;
         private readonly IPEndPoint _endpoint;
@@ -167,10 +170,26 @@ namespace cache.SimpleStoreSystem
             {
                 case CommandTypes.Add:
                     {
-                        var value = MemoryMarshal.Cast<char, byte>(command.Value);
                         var key = command.Key.ToString();
-                        _cache.Set(key, value.ToArray());
-                        response = GetReponse($"Key {key} successfuly added");
+                        if (command.Value.StartsWith('{') && command.Value.EndsWith('}'))
+                        {
+                            var value = JsonSerializer.Deserialize<UserProfile>(command.Value);
+                            if (value == null)
+                            {
+                                response = GetReponse("CAN'T DESERIALIZE JSON OBJECT WITH KEY {key} TO USER PROFILE!");
+                            }
+                            else
+                            {
+                                _cache.Set(key, value);
+                                response = GetReponse($"KEY {key} SUCCESSFULY ADDED AS JSON USER PROFILE");
+                            }
+                        }
+                        else
+                        {
+                            var value = MemoryMarshal.Cast<char, byte>(command.Value);
+                            _cache.Set(key, value.ToArray());
+                            response = GetReponse($"KEY {key} SUCCESSFULY ADDED AS BYTE ARRAY");
+                        }
                         break;
                     }
                 case CommandTypes.Get:
@@ -201,7 +220,7 @@ namespace cache.SimpleStoreSystem
                         break;
                     }
                 default:
-                    response = GetReponse($"Unknown or incorrect command!");
+                    response = GetReponse($"UNKNOWN OR INCORRECT COMMAND!");
                     break; 
             }
 
@@ -226,7 +245,7 @@ namespace cache.SimpleStoreSystem
                 if (disposing)
                 {
                     _cts.Cancel();
-                    _socket.Shutdown(SocketShutdown.Both);
+                    _socket?.Shutdown(SocketShutdown.Both);
                     _cache.Dispose();
                 }
                 _disposed = true;

@@ -111,8 +111,16 @@ namespace cache.SimpleStoreSystem
                 window = window.Slice(1, window.Length - 1);
             }
 
+            var index = -1;
             // find end of payload
-            var index = window.IndexOf(delimeter);
+            if (window[0] == '{' && window[window.Length - 1] == '}')
+            {
+                index = window.Length;
+            }
+            else
+            {
+                index = window.IndexOf(delimeter);
+            }
 
             // get payload
             var value = index == -1 ? window : window.Slice(0, index);

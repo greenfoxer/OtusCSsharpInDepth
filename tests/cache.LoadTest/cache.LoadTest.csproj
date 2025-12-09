@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="NBomber" Version="6.1.2" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\cache.SimpleStore\cache.SimpleStore.csproj" />
   </ItemGroup>
 

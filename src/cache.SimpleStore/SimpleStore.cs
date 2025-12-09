@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace cache.SimpleStoreSystem
 {
@@ -34,6 +36,22 @@ namespace cache.SimpleStoreSystem
                 {
                     _lock.EnterWriteLock();
                     _cache[key] = value;
+                    Interlocked.Increment(ref _setCount);
+                }
+                finally
+                {
+                    _lock.ExitWriteLock();
+                }
+            }
+        }
+        public void Set(string key, UserProfile value)
+        {
+            if (!string.IsNullOrEmpty(key))
+            {
+                try
+                {
+                    _lock.EnterWriteLock();
+                    _cache[key] = JsonSerializer.SerializeToUtf8Bytes(value);
                     Interlocked.Increment(ref _setCount);
                 }
                 finally
